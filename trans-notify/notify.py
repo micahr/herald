@@ -45,7 +45,7 @@ def run():
                                      title=NOTIFO_TRANS_STARTED)
 
 if __name__ == '__main__':
-    daemon.daemonize('trans-notify.pid')
+    daemon.daemonize('/tmp/trans-notify.pid')
     while True:
         run()
         time.sleep(CHECK_INTERVAL)
