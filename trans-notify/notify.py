@@ -18,7 +18,7 @@ NOTIFO_LABEL = 'TRANS-NOTIFY'
 NOTIFO_TRANS_FINISHED = 'Download Finished'
 NOTIFO_TRANS_STARTED = 'Download Started'
 
-
+# Time in seconds between checking for changes
 CHECK_INTERVAL = 30
 DELTA = datetime.timedelta(seconds=CHECK_INTERVAL)
 
