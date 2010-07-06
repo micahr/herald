@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='trans-notify',
-      version='0.1',
+      version='0.2',
       description='Mobile Notifications for Transmission Downloads',
       author='Micah Ransdell',
       author_email='mjr578@gmail.com',
