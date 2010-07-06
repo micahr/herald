@@ -15,9 +15,13 @@ Install::
 
 Usage
 ======
-run notify.py from the command line::
+Start Trans-Notify from the command line::
 
-    #: notify.py
+    #: notify.py start
+
+Stop Trans-Notify from the command line::
+
+    #: notify.py stop
 
 
 Requirements
