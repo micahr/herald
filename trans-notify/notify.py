@@ -6,15 +6,32 @@ import signal
 import datetime
 import time
 import notifo
-import transmissionrpc
+try:
+    import transmissionrpc
+    TRANSMISSION = True
+except ImportError:
+    TRANSMISSION = False
 import daemon
+try:
+    from uTorrent import uTorrent
+    UTORRENT = True
+except ImportError:
+    UTORRENT = False
+
 from optparse import OptionParser
 
 # Change these values to match your setup
-TRANSMISSION_USER = 'admin'
-TRANSMISSION_PASSWORD = ''
-TRANSMISSION_URL = 'localhost'
-TRANSMISSION_PORT = 9091
+if TRANSMISSION:
+    TRANSMISSION_USER = 'admin'
+    TRANSMISSION_PASSWORD = ''
+    TRANSMISSION_URL = 'localhost'
+    TRANSMISSION_PORT = 9091
+if UTORRENT:
+    UTORRENT_USER = 'admin'
+    UTORRENT_PASSWORD = ''
+    UTORRENT_URL = 'localhost'
+    UTORRENT_PORT = 8080
+
 NOTIFO_USER = '[Personal Notifo.com Username]'
 NOTIFO_KEY = '[Personal Notifo.com Key]'
 
@@ -33,10 +50,9 @@ PID_FILE_LOCATION =  '/tmp/trans-notify.pid'
 
 DELTA = datetime.timedelta(seconds=CHECK_INTERVAL)
 
-def run(tc):
+def run_transmission(tc, notify):
     torrents = tc.list()
-    notify = notifo.Notifo(NOTIFO_USER, NOTIFO_KEY)
-
+    
     for torrent in torrents.values():
         detailed = tc.info(torrent.id)[torrent.id]
         if detailed.date_done >= datetime.datetime.now() - DELTA:
@@ -51,18 +67,39 @@ def run(tc):
                                      label=NOTIFO_LABEL,
                                      title=NOTIFO_TRANS_STARTED)
 
+def run_utorrent(ut, notify, done_torrents):
+    all_torrents = ut.webui_ls()
+    for t in all_torrents:
+        # location for logic with  utorrent files
+        # add done torrents to done_torrents
+        # every pass through check if newly done torrents are in done_torrents or not
+        # if they are not, notify and add them
+        pass
+
+    return done_torrents
+
+
 def startup():
     print 'Starting up Trans-Notify'
-    try:
-        tc = transmissionrpc.Client(TRANSMISSION_URL, port=TRANSMISSION_PORT,
+    if TRANSMISSION:
+        try:
+            tc = transmissionrpc.Client(TRANSMISSION_URL, port=TRANSMISSION_PORT,
                                 user=TRANSMISSION_USER,
                                 password=TRANSMISSION_PASSWORD)
-    except transmissionrpc.transmission.TransmissionError:
-        print 'Please set the location of Transmission and the proper username and password'
-        sys.exit(1)
+        except transmissionrpc.transmission.TransmissionError:
+            print 'Please set the location of Transmission and the proper username and password'
+            sys.exit(1)
+    if UTORRENT:
+        ut = uTorrent(host=UTORRENT_URL, port=UTORRENT_PORT, username=UTORRENT_USER, password=UTORRENT_PASSWORD)
+        
     daemon.daemonize(PID_FILE_LOCATION)
+    notify = notifo.Notifo(NOTIFO_USER, NOTIFO_KEY)
+    done_torrents = []
     while True:
-        run(tc)
+        if TRANSMISSION:
+            run_transmission(tc, notify)
+        if UTORRENT:
+            done_torrents = run_utorrent(ut, notify, done_torrents)
         time.sleep(CHECK_INTERVAL)
 
 def shutdown():
