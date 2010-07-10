@@ -6,31 +6,28 @@ import signal
 import datetime
 import time
 import notifo
-try:
-    import transmissionrpc
-    TRANSMISSION = True
-except ImportError:
-    TRANSMISSION = False
 import daemon
 try:
-    from uTorrent import uTorrent
-    UTORRENT = True
+    import transmissionrpc
 except ImportError:
-    UTORRENT = False
+    print 'No TransmissionRPC Library'
+try:
+    from uTorrent import uTorrent
+except ImportError:
+    print 'No uTorrent.py Library'
 
 from optparse import OptionParser
 
 # Change these values to match your setup
-if TRANSMISSION:
-    TRANSMISSION_USER = 'admin'
-    TRANSMISSION_PASSWORD = ''
-    TRANSMISSION_URL = 'localhost'
-    TRANSMISSION_PORT = 9091
-if UTORRENT:
-    UTORRENT_USER = 'admin'
-    UTORRENT_PASSWORD = ''
-    UTORRENT_URL = 'localhost'
-    UTORRENT_PORT = 8080
+TRANSMISSION_USER = 'admin'
+TRANSMISSION_PASSWORD = ''
+TRANSMISSION_URL = 'localhost'
+TRANSMISSION_PORT = 9091
+
+UTORRENT_USER = 'admin'
+UTORRENT_PASSWORD = ''
+UTORRENT_URL = 'localhost'
+UTORRENT_PORT = 8080
 
 NOTIFO_USER = '[Personal Notifo.com Username]'
 NOTIFO_KEY = '[Personal Notifo.com Key]'
@@ -67,39 +64,54 @@ def run_transmission(tc, notify):
                                      label=NOTIFO_LABEL,
                                      title=NOTIFO_TRANS_STARTED)
 
-def run_utorrent(ut, notify, done_torrents):
-    all_torrents = ut.webui_ls()
-    for t in all_torrents:
-        # location for logic with  utorrent files
-        # add done torrents to done_torrents
-        # every pass through check if newly done torrents are in done_torrents or not
-        # if they are not, notify and add them
-        pass
+def run_utorrent(ut, notify, done_torrents, seen_torrents):
+    # Looking for all torrents that haven't previously been marked as done
+    unfinished_torrents = [x for x in ut.webui_ls() if x not in done_torrents]
+    # Looking for all torrents that are neither done, or been recorded previously
+    unseen_torrents = [x for x in ut.webui_ls() if x not in seen_torrents or done_torrents]
+    for torrent in unfinished_torrents:
+        if float(torrent[uTorrent.UT_TORRENT_STAT_P1000_DONE]) / 10 == 100.0:
+            notify.send_notification(to=NOTIFO_USER,
+                                     msg='Your download: %s is finished' % torrent[uTorrent.UT_TORRENT_PROP_NAME],
+                                     label=NOTIFO_LABEL,
+                                     title=NOTIFO_TRANS_FINISHED)
+            done_torrents.append(torrent)
+            # removing a torrent that is now done from the seen_torrents so it doesn't grow infinitely large
+            if torrent in seen_torrents:
+                seen_torrents.remove(torrent)
 
-    return done_torrents
+    for torrent in unseen_torrents:
+        notify.send_notification(to=NOTIFO_USER,
+                                     msg='Your download: %s has started' % torrent[uTorrent.UT_TORRENT_PROP_NAME],
+                                     label=NOTIFO_LABEL,
+                                     title=NOTIFO_TRANS_STARTED)
+        seen_torrents.append(torrent)
+
+    return (done_torrents, seen_torrents)
 
 
-def startup():
-    print 'Starting up Trans-Notify'
-    if TRANSMISSION:
+def startup(enable_daemon, client):
+    if client == 'transmission':
         try:
             tc = transmissionrpc.Client(TRANSMISSION_URL, port=TRANSMISSION_PORT,
-                                user=TRANSMISSION_USER,
-                                password=TRANSMISSION_PASSWORD)
+                                user=TRANSMISSION_USER, password=TRANSMISSION_PASSWORD)
         except transmissionrpc.transmission.TransmissionError:
             print 'Please set the location of Transmission and the proper username and password'
             sys.exit(1)
-    if UTORRENT:
-        ut = uTorrent(host=UTORRENT_URL, port=UTORRENT_PORT, username=UTORRENT_USER, password=UTORRENT_PASSWORD)
-        
-    daemon.daemonize(PID_FILE_LOCATION)
+    else:
+        ut = uTorrent.uTorrent(host=UTORRENT_URL, port=UTORRENT_PORT,
+                               username=UTORRENT_USER, password=UTORRENT_PASSWORD)
+
+    print 'Starting up Trans-Notify'
+    if not enable_daemon:
+        daemon.daemonize(PID_FILE_LOCATION)
     notify = notifo.Notifo(NOTIFO_USER, NOTIFO_KEY)
-    done_torrents = []
+    done_torrents, seen_torrents = [], []
     while True:
-        if TRANSMISSION:
+        if client == 'transmission':
             run_transmission(tc, notify)
-        if UTORRENT:
-            done_torrents = run_utorrent(ut, notify, done_torrents)
+        else:
+            done_torrents, seen_torrents = run_utorrent(ut, notify, done_torrents, seen_torrents)
         time.sleep(CHECK_INTERVAL)
 
 def shutdown():
@@ -116,9 +128,15 @@ def shutdown():
     print 'Killed Trans-Notify'
 
 if __name__ == '__main__':
-    usage = "usage: %prog start|stop"
+    usage = "usage: %prog [options] start|stop"
 
     parser = OptionParser(usage)
+    parser.add_option('-d','--debug',
+                      action="store_true", dest="debug", default=False,
+                      help="Disable daemon and other production level functions")
+    parser.add_option('-c','--client',
+                      action="store", dest="client", default="transmission",
+                      help="Choose which client to use: transmission or utorrent [default: %default]")
     
     (options, args) = parser.parse_args()
 
@@ -126,7 +144,7 @@ if __name__ == '__main__':
         parser.error("No action specified")
     else:
         if args[0].lower() == 'start':
-            startup()
+            startup(options.debug, options.client)
         else:
             shutdown()
 
