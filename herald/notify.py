@@ -68,7 +68,7 @@ def run_utorrent(ut, notify, done_torrents, seen_torrents):
     # Looking for all torrents that haven't previously been marked as done
     unfinished_torrents = [x for x in ut.webui_ls() if x not in done_torrents]
     # Looking for all torrents that are neither done, or been recorded previously
-    unseen_torrents = [x for x in ut.webui_ls() if x not in seen_torrents or done_torrents]
+    unseen_torrents = [x for x in ut.webui_ls() if x not in seen_torrents and done_torrents]
     for torrent in unfinished_torrents:
         if float(torrent[uTorrent.UT_TORRENT_STAT_P1000_DONE]) / 10 == 100.0:
             notify.send_notification(to=NOTIFO_USER,
