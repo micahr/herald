@@ -29,15 +29,15 @@ UTORRENT_PASSWORD = ''
 UTORRENT_URL = 'localhost'
 UTORRENT_PORT = 8080
 
-NOTIFO_USER = '[Personal Notifo.com Username]'
-NOTIFO_KEY = '[Personal Notifo.com Key]'
+NOTIFO_USER = '[notifo username]'
+NOTIFO_KEY = '[notifo api key]'
 
 # Time in seconds between checking for changes
 # Change this if you would like to poll less or more frequently
 CHECK_INTERVAL = 30
 
 # Feel free to change these values if you want a different notice on your Phone
-NOTIFO_LABEL = 'TRANS-NOTIFY'
+NOTIFO_LABEL = 'HERALD'
 NOTIFO_TRANS_FINISHED = 'Download Finished'
 NOTIFO_TRANS_STARTED = 'Download Started'
 
@@ -66,23 +66,23 @@ def run_transmission(tc, notify):
 
 def run_utorrent(ut, notify, done_torrents, seen_torrents):
     # Looking for all torrents that haven't previously been marked as done
-    unfinished_torrents = [x for x in ut.webui_ls() if x not in done_torrents]
+    unfinished_torrents = [x for x in ut.webui_ls() if x[uTorrent.UT_TORRENT_PROP_NAME] not in done_torrents]
     # Looking for all torrents that are neither done, or been recorded previously
-    unseen_torrents = [x for x in ut.webui_ls() if x not in seen_torrents and done_torrents]
+    unseen_torrents = [x[uTorrent.UT_TORRENT_PROP_NAME] for x in ut.webui_ls() if x[uTorrent.UT_TORRENT_PROP_NAME] not in seen_torrents and x[uTorrent.UT_TORRENT_PROP_NAME] not in done_torrents]
     for torrent in unfinished_torrents:
         if float(torrent[uTorrent.UT_TORRENT_STAT_P1000_DONE]) / 10 == 100.0:
             notify.send_notification(to=NOTIFO_USER,
                                      msg='Your download: %s is finished' % torrent[uTorrent.UT_TORRENT_PROP_NAME],
                                      label=NOTIFO_LABEL,
                                      title=NOTIFO_TRANS_FINISHED)
-            done_torrents.append(torrent)
+            done_torrents.append(torrent[uTorrent.UT_TORRENT_PROP_NAME])
             # removing a torrent that is now done from the seen_torrents so it doesn't grow infinitely large
             if torrent in seen_torrents:
-                seen_torrents.remove(torrent)
+                seen_torrents.remove(torrent[uTorrent.UT_TORRENT_PROP_NAME])
 
     for torrent in unseen_torrents:
         notify.send_notification(to=NOTIFO_USER,
-                                     msg='Your download: %s has started' % torrent[uTorrent.UT_TORRENT_PROP_NAME],
+                                     msg='Your download: %s has started' % torrent,
                                      label=NOTIFO_LABEL,
                                      title=NOTIFO_TRANS_STARTED)
         seen_torrents.append(torrent)
