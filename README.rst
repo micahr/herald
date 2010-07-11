@@ -1,10 +1,10 @@
 ============
-trans-notify
+herald
 ============
 
 Introduction
 =============
-trans-notify is a python daemon for monitoring your Transmission_ or uTorrent_ downloads
+Herald is a python daemon for monitoring your Transmission_ or uTorrent_ downloads
 
 Installation
 =============
@@ -15,11 +15,11 @@ Install::
 
 Usage
 ======
-Start Trans-Notify from the command line::
+Start Herald from the command line::
 
     #: notify.py [options] start
 
-Stop Trans-Notify from the command line::
+Stop Herald from the command line::
 
     #: notify.py [options] stop
 
@@ -36,7 +36,7 @@ Full Usage::
 
 Requirements
 ======
-trans-notify requires an account on Notifo_ and Transmission_ or uTorrent_ installed on your machine.
+herald requires an account on Notifo_ and Transmission_ or uTorrent_ installed on your machine.
 You will also need the web interface turned on in order for everything to work. You can
 access the web interface option in the Preferences -> Web tab.
 
